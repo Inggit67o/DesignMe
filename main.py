@@ -142,3 +142,75 @@ class LayoutHeuristics:
             if density > 0.5:
                 density_penalty = (density - 0.5) * 4.0
 
+        score = 7.0 + triangle_bonus - density_penalty
+        return max(1.0, min(score, 10.0))
+
+    @staticmethod
+    def compute_storage_score(room: RoomMetrics, appliances: List[ApplianceSpec]) -> float:
+        height_factor = min(room.height_m / 2.4, 1.5)
+        base = 6.0 * height_factor
+        tall_items = sum(1 for a in appliances if a.height_cm >= 200)
+        base += min(tall_items * 0.4, 2.0)
+        return max(1.0, min(base, 10.0))
+
+    @staticmethod
+    def compute_vibe(room: RoomMetrics, constraints: ConstraintSet, style_label: str) -> float:
+        vibe = 5.5
+        if "industrial" in style_label:
+            vibe += 1.0
+        if "warm" in style_label or "wood" in style_label:
+            vibe += 0.7
+        if constraints.noise_sensitive:
+            vibe -= 0.5
+        if constraints.child_friendly:
+            vibe += 0.4
+        if "maximalist" in style_label:
+            vibe += 1.3
+        return max(1.0, min(vibe, 10.0))
+
+    @staticmethod
+    def synthesize_idea(
+        room: RoomMetrics,
+        appliances: List[ApplianceSpec],
+        constraints: ConstraintSet,
+        style_label: Optional[str] = None,
+        risk_tier: Optional[int] = None,
+    ) -> LayoutIdea:
+        if style_label is None:
+            style_label = random.choice(DEFAULT_STYLE_LABELS)
+        if risk_tier is None:
+            risk_tier = LayoutHeuristics.suggest_risk_tier(room, constraints)
+
+        ergonomics = LayoutHeuristics.compute_ergonomics(room, appliances)
+        storage = LayoutHeuristics.compute_storage_score(room, appliances)
+        vibe = LayoutHeuristics.compute_vibe(room, constraints, style_label)
+
+        narrative_parts = [
+            f"Style: {style_label}, tier={RISK_TIER_LABELS[risk_tier]}",
+            f"Room {room.width_m:.1f}m x {room.depth_m:.1f}m, height {room.height_m:.1f}m.",
+            f"Approx {len(appliances)} major appliances.",
+        ]
+        if constraints.child_friendly:
+            narrative_parts.append("Child-friendly clear run in front of hob.")
+        if constraints.wheelchair_accessible:
+            narrative_parts.append("Maintain turning circles near sink and cooktop.")
+        if constraints.prefer_induction:
+            narrative_parts.append("Prefer induction over gas for cooktop.")
+
+        key_zones = [
+            "prep_zone",
+            "cooking_zone",
+            "cleaning_zone",
+            "pantry_zone",
+            "coffee_corner",
+        ]
+
+        return LayoutIdea(
+            style_label=style_label,
+            risk_tier=risk_tier,
+            ergonomics_score=ergonomics,
+            storage_score=storage,
+            vibe_score=vibe,
+            narrative=" ".join(narrative_parts),
+            plan_id_hint="plan-" + hex(random.getrandbits(64)),
+            key_zones=key_zones,
