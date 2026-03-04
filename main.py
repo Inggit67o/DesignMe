@@ -70,3 +70,75 @@ class ApplianceSpec:
     power_kw: float = 2.0
 
 
+@dataclass
+class ConstraintSet:
+    budget_fiat: float
+    timeline_weeks: int
+    prefer_gas: bool
+    prefer_induction: bool
+    noise_sensitive: bool
+    child_friendly: bool
+    wheelchair_accessible: bool
+    notes: str = ""
+
+
+@dataclass
+class LayoutIdea:
+    style_label: str
+    risk_tier: int
+    ergonomics_score: float
+    storage_score: float
+    vibe_score: float
+    narrative: str
+    plan_id_hint: str = ""
+    key_zones: List[str] = field(default_factory=list)
+
+
+@dataclass
+class DesignSession:
+    room: RoomMetrics
+    appliances: List[ApplianceSpec]
+    constraints: ConstraintSet
+    ideas: List[LayoutIdea] = field(default_factory=list)
+
+    def to_json(self) -> str:
+        return json.dumps(dataclasses.asdict(self), indent=2)
+
+
+class LayoutHeuristics:
+    @staticmethod
+    def _area(room: RoomMetrics) -> float:
+        return max(room.width_m * room.depth_m, 0.0)
+
+    @staticmethod
+    def suggest_risk_tier(room: RoomMetrics, constraints: ConstraintSet) -> int:
+        base = 2
+        if constraints.budget_fiat > 80_000:
+            base += 1
+        if constraints.budget_fiat > 150_000:
+            base += 1
+        if constraints.child_friendly:
+            base -= 1
+        if constraints.wheelchair_accessible:
+            base -= 1
+        if room.width_m * room.depth_m > 25:
+            base += 1
+        return min(max(base, 0), len(RISK_TIER_LABELS) - 1)
+
+    @staticmethod
+    def compute_ergonomics(room: RoomMetrics, appliances: List[ApplianceSpec]) -> float:
+        triangle_bonus = 0.0
+        if any("sink" in a.name.lower() for a in appliances):
+            triangle_bonus += 1.5
+        if any("hob" in a.name.lower() or "cooktop" in a.name.lower() for a in appliances):
+            triangle_bonus += 1.5
+        if any("fridge" in a.name.lower() for a in appliances):
+            triangle_bonus += 1.5
+
+        area = LayoutHeuristics._area(room)
+        density_penalty = 0.0
+        if area > 0:
+            density = len(appliances) / area
+            if density > 0.5:
+                density_penalty = (density - 0.5) * 4.0
+
