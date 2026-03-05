@@ -430,3 +430,75 @@ def main(argv: List[str]) -> int:
     print(f"\nSession saved to {path}")
     return 0
 
+
+# ---------------------------------------------------------------------------
+# VALIDATION HELPERS
+# ---------------------------------------------------------------------------
+
+
+def validate_room(room: RoomMetrics) -> List[str]:
+    """Return list of validation errors for room; empty if valid."""
+    errs: List[str] = []
+    if room.width_m <= 0 or room.depth_m <= 0:
+        errs.append("Width and depth must be positive.")
+    if room.height_m <= 0 or room.height_m > 6:
+        errs.append("Ceiling height must be in (0, 6] m.")
+    if room.windows < 0 or room.doors < 0:
+        errs.append("Windows and doors must be non-negative.")
+    if room.water_points < 0:
+        errs.append("Water points must be non-negative.")
+    return errs
+
+
+def validate_constraints(c: ConstraintSet) -> List[str]:
+    """Return list of validation errors for constraints; empty if valid."""
+    errs: List[str] = []
+    if c.budget_fiat < 0:
+        errs.append("Budget must be non-negative.")
+    if c.timeline_weeks <= 0 or c.timeline_weeks > 520:
+        errs.append("Timeline weeks must be in (0, 520].")
+    return errs
+
+
+def validate_appliance(a: ApplianceSpec) -> List[str]:
+    """Return list of validation errors for one appliance; empty if valid."""
+    errs: List[str] = []
+    if not a.name or not a.name.strip():
+        errs.append("Appliance name required.")
+    if a.width_cm <= 0 or a.depth_cm <= 0 or a.height_cm <= 0:
+        errs.append("Dimensions must be positive.")
+    if a.width_cm > 200 or a.depth_cm > 150 or a.height_cm > 250:
+        errs.append("Dimensions out of typical range (w<=200, d<=150, h<=250 cm).")
+    if a.power_kw < 0 or a.power_kw > 30:
+        errs.append("Power should be in [0, 30] kW.")
+    return errs
+
+
+def validate_session(session: DesignSession) -> List[str]:
+    """Aggregate validation for a full design session."""
+    errs = validate_room(session.room) + validate_constraints(session.constraints)
+    for i, a in enumerate(session.appliances):
+        for e in validate_appliance(a):
+            errs.append(f"Appliance[{i}] {a.name}: {e}")
+    return errs
+
+
+# ---------------------------------------------------------------------------
+# REPORT BUILDERS
+# ---------------------------------------------------------------------------
+
+
+def build_room_report(room: RoomMetrics) -> str:
+    """Single-line summary of room metrics."""
+    area = room.width_m * room.depth_m
+    return (
+        f"Room {room.width_m:.1f}x{room.depth_m:.1f}m (h={room.height_m:.1f}m), "
+        f"area={area:.1f}m², windows={room.windows}, doors={room.doors}, "
+        f"gas={room.gas_line}, water_points={room.water_points}"
+    )
+
+
+def build_constraints_report(c: ConstraintSet) -> str:
+    """Single-line summary of constraints."""
+    return (
+        f"Budget={c.budget_fiat:.0f}, timeline={c.timeline_weeks}w, "
