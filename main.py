@@ -862,3 +862,75 @@ def export_ideas_to_csv(ideas: List[LayoutIdea], path: str) -> None:
         for i in ideas:
             w.writerow([
                 i.style_label,
+                i.risk_tier,
+                f"{i.ergonomics_score:.2f}",
+                f"{i.storage_score:.2f}",
+                f"{i.vibe_score:.2f}",
+                i.plan_id_hint,
+                (i.narrative or "")[:200],
+            ])
+
+
+def export_appliances_to_csv(appliances: List[ApplianceSpec], path: str) -> None:
+    """Write appliances to a CSV file."""
+    with open(path, "w", newline="", encoding="utf-8") as f:
+        w = _csv.writer(f)
+        w.writerow(["name", "width_cm", "depth_cm", "height_cm", "must_keep", "power_kw"])
+        for a in appliances:
+            w.writerow([a.name, a.width_cm, a.depth_cm, a.height_cm, a.must_keep, f"{a.power_kw:.2f}"])
+
+
+# ---------------------------------------------------------------------------
+# ERROR CODES REFERENCE (for KetaVision integration)
+# ---------------------------------------------------------------------------
+
+ERROR_CODES = {
+    "KV_ORACLE_ONLY": "Only oracle can perform this action",
+    "KV_AUDITOR_ONLY": "Only auditor can perform this action",
+    "KV_OWNER_ONLY": "Only owner can perform this action",
+    "KV_PLAN_EXISTS": "Plan already registered with this id",
+    "KV_PLAN_NOT_FOUND": "Plan not found or soft-deleted",
+    "KV_ALREADY_PINNED": "Plan already pinned",
+    "KV_ALREADY_RATED": "Caller already rated this plan",
+    "KV_FEE_TOO_HIGH": "Protocol fee exceeds maximum",
+    "KV_PAUSED": "Namespace is paused",
+    "KV_INVALID_SCORE": "Rating score out of range",
+    "KV_ZERO_ADDRESS": "Zero address not allowed",
+}
+
+
+def get_error_description(code: str) -> str:
+    """Return human-readable description for an error code."""
+    return ERROR_CODES.get(code, "Unknown error")
+
+
+def print_error_codes() -> None:
+    """Print all known error codes and descriptions."""
+    for code, desc in ERROR_CODES.items():
+        print(f"  {code}: {desc}")
+
+
+# ---------------------------------------------------------------------------
+# ABI / ENCODING HELPERS (stub for contract calls)
+# ---------------------------------------------------------------------------
+
+
+def abi_encode_register_plan(
+    plan_id: Union[bytes, str],
+    layout_style: int,
+    risk_tier: int,
+    ceiling_height_cm: int,
+    area_cm2: int,
+    appliance_count: int,
+) -> Dict[str, Any]:
+    """Return dict suitable for encoding registerPlan calldata (stub)."""
+    return {
+        "method": "registerPlan",
+        "params": {
+            "planId": plan_id.hex() if hasattr(plan_id, "hex") else plan_id,
+            "layoutStyle": layout_style,
+            "riskTier": risk_tier,
+            "ceilingHeightCm": ceiling_height_cm,
+            "areaCm2": area_cm2,
+            "applianceCount": appliance_count,
+        },
