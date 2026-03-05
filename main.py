@@ -790,3 +790,75 @@ def create_demo_room() -> RoomMetrics:
 def create_demo_appliances() -> List[ApplianceSpec]:
     """Return demo appliances list."""
     return [
+        ApplianceSpec("Range cooker 90cm", 90, 60, 90, True, 8.0),
+        ApplianceSpec("Fridge-freezer", 60, 65, 200, True, 0.5),
+        ApplianceSpec("Dishwasher", 60, 60, 82, True, 2.0),
+        ApplianceSpec("Sink unit", 100, 60, 90, True, 0),
+    ]
+
+
+def create_demo_constraints() -> ConstraintSet:
+    """Return demo constraints."""
+    return ConstraintSet(
+        budget_fiat=75_000,
+        timeline_weeks=12,
+        prefer_gas=False,
+        prefer_induction=True,
+        noise_sensitive=False,
+        child_friendly=True,
+        wheelchair_accessible=False,
+        notes="Demo constraints",
+    )
+
+
+def create_demo_session() -> DesignSession:
+    """Build a full demo session with generated ideas."""
+    room = create_demo_room()
+    appliances = create_demo_appliances()
+    constraints = create_demo_constraints()
+    session = DesignSession(room=room, appliances=appliances, constraints=constraints)
+    session.ideas = generate_ideas_batch(room, appliances, constraints, count=5)
+    return session
+
+
+def run_demo() -> None:
+    """Run demo: create session, print report, save JSON."""
+    session = create_demo_session()
+    print(build_session_report(session))
+    path = os.path.abspath("designme_demo_session.json")
+    save_session_to_file(session, path)
+    print(f"Demo session saved to {path}")
+
+
+# ---------------------------------------------------------------------------
+# REFERENCE / HELP
+# ---------------------------------------------------------------------------
+
+
+def print_usage() -> None:
+    """Print usage and options."""
+    print(f"{APP_NAME} v{APP_VERSION}")
+    print("Usage: python DesignMe.py [--version] [--runbook] [--demo] [--help]")
+    print("  No args: interactive wizard to capture room, appliances, constraints; then generate ideas.")
+    print("  --version: print version")
+    print("  --runbook: print runbook steps")
+    print("  --demo: run demo and save designme_demo_session.json")
+    print("  --help: this message")
+    print_runbook()
+
+
+# ---------------------------------------------------------------------------
+# CSV EXPORT
+# ---------------------------------------------------------------------------
+
+import csv as _csv
+
+
+def export_ideas_to_csv(ideas: List[LayoutIdea], path: str) -> None:
+    """Write layout ideas to a CSV file."""
+    with open(path, "w", newline="", encoding="utf-8") as f:
+        w = _csv.writer(f)
+        w.writerow(["style_label", "risk_tier", "ergonomics_score", "storage_score", "vibe_score", "plan_id_hint", "narrative"])
+        for i in ideas:
+            w.writerow([
+                i.style_label,
