@@ -1078,3 +1078,75 @@ def session_to_markdown(session: DesignSession) -> str:
     """Convert full session to markdown."""
     parts = [
         "# DesignMe Session",
+        "",
+        "## Room",
+        format_room_one_line(session.room),
+        "",
+        "## Appliances",
+    ]
+    for a in session.appliances:
+        parts.append(f"- {format_appliance_one_line(a)}")
+    parts.append("")
+    parts.append(ideas_to_markdown(session.ideas))
+    return "\n".join(parts)
+
+
+# ---------------------------------------------------------------------------
+# REFERENCE: KETAVISION CONTRACT BOUNDS
+# ---------------------------------------------------------------------------
+# layoutStyle: 0..15 (DEFAULT_STYLE_LABELS index or contract enum)
+# riskTier: 0..6 (RISK_TIER_LABELS index)
+# ceilingHeightCm: 200..600 (2m..6m in cm)
+# areaCm2: positive, typically 40000..1000000 (4m²..100m²)
+# applianceCount: 0..255
+# rating scores: 1..10 (ergonomics, storage, vibe)
+# feeBps: 0..500 (max 5%)
+# ---------------------------------------------------------------------------
+
+
+def clamp_style_index(idx: int) -> int:
+    """Clamp style index to valid range for KetaVision."""
+    return max(0, min(KV_MAX_STYLE_INDEX, idx))
+
+
+def clamp_tier_index(idx: int) -> int:
+    """Clamp risk tier index to valid range for KetaVision."""
+    return max(0, min(KV_MAX_TIER_INDEX, idx))
+
+
+def clamp_ceiling_height_cm(h_cm: int) -> int:
+    """Clamp ceiling height to typical 200..600 cm."""
+    return max(200, min(600, h_cm))
+
+
+def clamp_rating_score(score: float) -> int:
+    """Clamp and round rating to 1..10 for contract."""
+    return max(KV_SCORE_MIN, min(KV_SCORE_MAX, int(round(score))))
+
+
+def room_to_ceiling_cm(room: RoomMetrics) -> int:
+    """Convert room height to ceiling height in cm for contract."""
+    return clamp_ceiling_height_cm(int(room.height_m * 100))
+
+
+def room_to_area_cm2(room: RoomMetrics) -> int:
+    """Convert room dimensions to area in cm² for contract."""
+    area_m2 = room.width_m * room.depth_m
+    return max(1, int(area_m2 * 100 * 100))
+
+
+def get_best_idea_by_ergonomics(session: DesignSession) -> Optional[LayoutIdea]:
+    """Return the layout idea with highest ergonomics score, or None if no ideas."""
+    if not session.ideas:
+        return None
+    return max(session.ideas, key=lambda i: i.ergonomics_score)
+
+
+def get_best_idea_by_storage(session: DesignSession) -> Optional[LayoutIdea]:
+    """Return the layout idea with highest storage score, or None if no ideas."""
+    if not session.ideas:
+        return None
+    return max(session.ideas, key=lambda i: i.storage_score)
+
+
+def get_best_idea_by_vibe(session: DesignSession) -> Optional[LayoutIdea]:
