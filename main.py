@@ -646,3 +646,75 @@ def decode_session_from_dict(data: Dict[str, Any]) -> DesignSession:
     for i in data.get("ideas", []):
         ideas.append(
             LayoutIdea(
+                style_label=str(i.get("style_label", "")),
+                risk_tier=int(i.get("risk_tier", 0)),
+                ergonomics_score=float(i.get("ergonomics_score", 0)),
+                storage_score=float(i.get("storage_score", 0)),
+                vibe_score=float(i.get("vibe_score", 0)),
+                narrative=str(i.get("narrative", "")),
+                plan_id_hint=str(i.get("plan_id_hint", "")),
+                key_zones=list(i.get("key_zones", [])),
+            )
+        )
+    return DesignSession(room=room, appliances=appliances, constraints=constraints, ideas=ideas)
+
+
+def load_session_from_file(path: str) -> DesignSession:
+    """Load a design session from a JSON file."""
+    with open(path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    return decode_session_from_dict(data)
+
+
+def save_session_to_file(session: DesignSession, path: str) -> None:
+    """Save a design session to a JSON file."""
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(session.to_json())
+
+
+# ---------------------------------------------------------------------------
+# GAS ESTIMATOR (off-chain, approximate)
+# ---------------------------------------------------------------------------
+
+GAS_REGISTER_PLAN = 250_000
+GAS_RATE_PLAN = 120_000
+GAS_PIN_PLAN = 80_000
+GAS_SOFT_DELETE = 60_000
+GAS_SET_ORACLE = 50_000
+GAS_SET_FEE_BPS = 45_000
+
+
+def estimate_register_plan_gas() -> int:
+    return GAS_REGISTER_PLAN
+
+
+def estimate_rate_plan_gas() -> int:
+    return GAS_RATE_PLAN
+
+
+def get_gas_estimates() -> Dict[str, int]:
+    return {
+        "registerPlan": GAS_REGISTER_PLAN,
+        "ratePlan": GAS_RATE_PLAN,
+        "pinPlan": GAS_PIN_PLAN,
+        "softDeletePlan": GAS_SOFT_DELETE,
+        "setOracle": GAS_SET_ORACLE,
+        "setFeeBps": GAS_SET_FEE_BPS,
+    }
+
+
+# ---------------------------------------------------------------------------
+# BATCH HELPERS
+# ---------------------------------------------------------------------------
+
+
+def generate_ideas_batch(
+    room: RoomMetrics,
+    appliances: List[ApplianceSpec],
+    constraints: ConstraintSet,
+    count: int = 5,
+    style_labels: Optional[List[str]] = None,
+) -> List[LayoutIdea]:
+    """Generate multiple layout ideas; optionally fix style set."""
+    ideas: List[LayoutIdea] = []
+    styles = style_labels or DEFAULT_STYLE_LABELS
