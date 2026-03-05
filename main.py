@@ -358,3 +358,75 @@ def submit_plan_to_ketavision(
     Returns transaction hash, or raises RuntimeError if web3 is not installed.
     """
     Web3 = _maybe_import_web3()
+    if Web3 is None:
+        raise RuntimeError("Install web3 to submit to chain (pip install web3).")
+
+    w3 = Web3(Web3.HTTPProvider(rpc_url))
+    if not w3.is_connected():
+        raise RuntimeError("Not connected to RPC")
+
+    acct = w3.eth.account.from_key(private_key)
+    abi_fragment = [
+        {
+            "inputs": [
+                {"internalType": "bytes32", "name": "planId", "type": "bytes32"},
+                {"internalType": "uint8", "name": "layoutStyle", "type": "uint8"},
+                {"internalType": "uint8", "name": "riskTier", "type": "uint8"},
+                {"internalType": "uint32", "name": "ceilingHeightCm", "type": "uint32"},
+                {"internalType": "uint32", "name": "areaCm2", "type": "uint32"},
+                {"internalType": "uint16", "name": "applianceCount", "type": "uint16"},
+            ],
+            "name": "registerPlan",
+            "outputs": [],
+            "stateMutability": "nonpayable",
+            "type": "function",
+        }
+    ]
+    contract = w3.eth.contract(address=Web3.to_checksum_address(contract_address), abi=abi_fragment)
+    nonce = w3.eth.get_transaction_count(acct.address)
+    tx = contract.functions.registerPlan(
+        plan_id,
+        layout_style,
+        risk_tier,
+        ceiling_height_cm,
+        area_cm2,
+        appliance_count,
+    ).build_transaction(
+        {
+            "from": acct.address,
+            "nonce": nonce,
+            "gas": 450_000,
+            "maxFeePerGas": w3.to_wei("2", "gwei"),
+            "maxPriorityFeePerGas": w3.to_wei("1", "gwei"),
+        }
+    )
+    signed = acct.sign_transaction(tx)
+    tx_hash = w3.eth.send_raw_transaction(signed.rawTransaction)
+    return tx_hash.hex()
+
+
+def main(argv: List[str]) -> int:
+    if "--version" in argv:
+        print(f"{APP_NAME} {APP_VERSION}")
+        return 0
+
+    print(f"{APP_NAME} v{APP_VERSION} — AI kitchen planning helper for KetaVision.")
+    session = build_session_interactive()
+    print("\n=== Suggested layouts ===")
+    for idx, idea in enumerate(session.ideas, start=1):
+        print(f"\n[{idx}] {idea.style_label} / tier={RISK_TIER_LABELS[idea.risk_tier]}")
+        print(
+            f"  ergonomics={idea.ergonomics_score:.1f} "
+            f"storage={idea.storage_score:.1f} "
+            f"vibe={idea.vibe_score:.1f}"
+        )
+        print(f"  plan hint: {idea.plan_id_hint}")
+        print(f"  zones: {', '.join(idea.key_zones)}")
+        print(f"  narrative: {idea.narrative}")
+
+    path = os.path.abspath("designme_session.json")
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(session.to_json())
+    print(f"\nSession saved to {path}")
+    return 0
+
