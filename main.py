@@ -574,3 +574,75 @@ def get_tier_label(index: int) -> str:
 
 # ---------------------------------------------------------------------------
 # RUNBOOK / PROCEDURES
+# ---------------------------------------------------------------------------
+
+RUNBOOK_STEPS = [
+    "1. Capture room metrics (width, depth, height, windows, doors, gas, water).",
+    "2. Add appliances (name, dimensions, power, must-keep).",
+    "3. Set constraints (budget, timeline, gas/induction, child-friendly, accessible).",
+    "4. Generate layout ideas (heuristics: ergonomics, storage, vibe).",
+    "5. Optionally export session JSON or submit plan to KetaVision contract.",
+]
+
+
+def get_runbook() -> List[str]:
+    """Return runbook steps for DesignMe workflow."""
+    return list(RUNBOOK_STEPS)
+
+
+def print_runbook() -> None:
+    """Print runbook to stdout."""
+    for step in RUNBOOK_STEPS:
+        print(step)
+
+
+# ---------------------------------------------------------------------------
+# STATE ENCODER / DECODER (for persistence)
+# ---------------------------------------------------------------------------
+
+
+def encode_session_to_dict(session: DesignSession) -> Dict[str, Any]:
+    """Serialize session to a JSON-suitable dict."""
+    return dataclasses.asdict(session)
+
+
+def decode_session_from_dict(data: Dict[str, Any]) -> DesignSession:
+    """Deserialize session from a dict (e.g. from JSON)."""
+    room_data = data.get("room", {})
+    room = RoomMetrics(
+        width_m=float(room_data.get("width_m", 0)),
+        depth_m=float(room_data.get("depth_m", 0)),
+        height_m=float(room_data.get("height_m", 0)),
+        windows=int(room_data.get("windows", 0)),
+        doors=int(room_data.get("doors", 0)),
+        gas_line=bool(room_data.get("gas_line", False)),
+        water_points=int(room_data.get("water_points", 0)),
+        notes=str(room_data.get("notes", "")),
+    )
+    appliances: List[ApplianceSpec] = []
+    for a in data.get("appliances", []):
+        appliances.append(
+            ApplianceSpec(
+                name=str(a.get("name", "")),
+                width_cm=int(a.get("width_cm", 0)),
+                depth_cm=int(a.get("depth_cm", 0)),
+                height_cm=int(a.get("height_cm", 0)),
+                must_keep=bool(a.get("must_keep", True)),
+                power_kw=float(a.get("power_kw", 2.0)),
+            )
+        )
+    c_data = data.get("constraints", {})
+    constraints = ConstraintSet(
+        budget_fiat=float(c_data.get("budget_fiat", 0)),
+        timeline_weeks=int(c_data.get("timeline_weeks", 0)),
+        prefer_gas=bool(c_data.get("prefer_gas", False)),
+        prefer_induction=bool(c_data.get("prefer_induction", True)),
+        noise_sensitive=bool(c_data.get("noise_sensitive", False)),
+        child_friendly=bool(c_data.get("child_friendly", True)),
+        wheelchair_accessible=bool(c_data.get("wheelchair_accessible", False)),
+        notes=str(c_data.get("notes", "")),
+    )
+    ideas: List[LayoutIdea] = []
+    for i in data.get("ideas", []):
+        ideas.append(
+            LayoutIdea(
