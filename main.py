@@ -934,3 +934,75 @@ def abi_encode_register_plan(
             "areaCm2": area_cm2,
             "applianceCount": appliance_count,
         },
+    }
+
+
+def abi_encode_rate_plan(
+    plan_id: Union[bytes, str],
+    ergonomics: int,
+    storage_score: int,
+    vibe: int,
+    fee_wei: int = 0,
+) -> Dict[str, Any]:
+    """Return dict suitable for encoding ratePlan calldata (stub)."""
+    return {
+        "method": "ratePlan",
+        "params": {
+            "planId": plan_id.hex() if hasattr(plan_id, "hex") else plan_id,
+            "ergonomics": ergonomics,
+            "storageScore": storage_score,
+            "vibe": vibe,
+            "feeWei": fee_wei,
+        },
+    }
+
+
+def session_to_ketavision_params(session: DesignSession, style_index: int, tier_index: int) -> Dict[str, Any]:
+    """Map a design session and chosen idea to KetaVision register params."""
+    room = session.room
+    area_cm2 = int(room.width_m * 100 * room.depth_m * 100)
+    ceiling_cm = int(room.height_m * 100)
+    return {
+        "layout_style": style_index,
+        "risk_tier": tier_index,
+        "ceiling_height_cm": ceiling_cm,
+        "area_cm2": area_cm2,
+        "appliance_count": len(session.appliances),
+    }
+
+
+# ---------------------------------------------------------------------------
+# EXTRA DEMO FLOWS
+# ---------------------------------------------------------------------------
+
+
+def create_minimal_room() -> RoomMetrics:
+    """Minimal room for unit-style kitchen."""
+    return RoomMetrics(2.0, 1.8, 2.2, 0, 1, False, 1, "Minimal")
+
+
+def create_large_room() -> RoomMetrics:
+    """Large room for chef-lab style."""
+    return RoomMetrics(6.0, 5.0, 3.0, 3, 2, True, 3, "Large chef lab")
+
+
+def create_accessible_room() -> RoomMetrics:
+    """Room with accessibility defaults."""
+    return RoomMetrics(4.0, 3.5, 2.6, 2, 1, False, 2, "Wheelchair accessible")
+
+
+def run_validation_demo() -> None:
+    """Run validation on demo session and print any errors."""
+    session = create_demo_session()
+    errs = validate_session(session)
+    if not errs:
+        print("Validation passed.")
+    else:
+        for e in errs:
+            print(f"  ERROR: {e}")
+
+
+def run_gas_estimate_demo() -> None:
+    """Print gas estimates for common KetaVision operations."""
+    print("KetaVision gas estimates (approximate):")
+    for name, gas in get_gas_estimates().items():
