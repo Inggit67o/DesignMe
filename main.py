@@ -286,3 +286,75 @@ def capture_appliances_interactive() -> List[ApplianceSpec]:
         w = _prompt_int("Width (cm)?", 60)
         d = _prompt_int("Depth (cm)?", 60)
         h = _prompt_int("Height (cm)?", 200 if "fridge" in name.lower() else 90)
+        must_keep = _prompt_bool("Must keep?", True)
+        power = _prompt_float("Approx power (kW)?", 2.0)
+        items.append(
+            ApplianceSpec(
+                name=name,
+                width_cm=w,
+                depth_cm=d,
+                height_cm=h,
+                must_keep=must_keep,
+                power_kw=power,
+            )
+        )
+    return items
+
+
+def capture_constraints_interactive() -> ConstraintSet:
+    print("=== Constraints ===")
+    budget = _prompt_float("Budget (fiat)?", 50_000)
+    weeks = _prompt_int("Timeline (weeks)?", 8)
+    prefer_gas = _prompt_bool("Prefer gas?", False)
+    prefer_induction = _prompt_bool("Prefer induction?", True)
+    noise_sensitive = _prompt_bool("Noise sensitive?", False)
+    child_friendly = _prompt_bool("Child friendly?", True)
+    accessible = _prompt_bool("Wheelchair accessible?", False)
+    notes = input("Freeform notes (optional): ")
+    return ConstraintSet(
+        budget_fiat=budget,
+        timeline_weeks=weeks,
+        prefer_gas=prefer_gas,
+        prefer_induction=prefer_induction,
+        noise_sensitive=noise_sensitive,
+        child_friendly=child_friendly,
+        wheelchair_accessible=accessible,
+        notes=notes,
+    )
+
+
+def build_session_interactive() -> DesignSession:
+    room = capture_room_interactive()
+    appliances = capture_appliances_interactive()
+    constraints = capture_constraints_interactive()
+    session = DesignSession(room=room, appliances=appliances, constraints=constraints)
+    for _ in range(3):
+        idea = LayoutHeuristics.synthesize_idea(room, appliances, constraints)
+        session.ideas.append(idea)
+    return session
+
+
+def _maybe_import_web3():
+    try:
+        from web3 import Web3  # type: ignore
+    except ImportError:  # pragma: no cover - optional dependency
+        return None
+    return Web3
+
+
+def submit_plan_to_ketavision(
+    rpc_url: str,
+    contract_address: str,
+    plan_id: bytes,
+    layout_style: int,
+    risk_tier: int,
+    ceiling_height_cm: int,
+    area_cm2: int,
+    appliance_count: int,
+    private_key: str,
+) -> str:
+    """
+    Minimal stub to call KetaVision.registerPlan; expects the full ABI externally.
+    Returns transaction hash, or raises RuntimeError if web3 is not installed.
+    """
+    Web3 = _maybe_import_web3()
