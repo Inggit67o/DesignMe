@@ -214,3 +214,75 @@ class LayoutHeuristics:
             narrative=" ".join(narrative_parts),
             plan_id_hint="plan-" + hex(random.getrandbits(64)),
             key_zones=key_zones,
+        )
+
+
+def _prompt_float(prompt: str, default: Optional[float] = None) -> float:
+    while True:
+        suffix = f" [{default}] " if default is not None else " "
+        raw = input(prompt + suffix)
+        if not raw and default is not None:
+            return float(default)
+        try:
+            return float(raw)
+        except ValueError:
+            print("Enter a number.")
+
+
+def _prompt_int(prompt: str, default: Optional[int] = None) -> int:
+    while True:
+        suffix = f" [{default}] " if default is not None else " "
+        raw = input(prompt + suffix)
+        if not raw and default is not None:
+            return int(default)
+        try:
+            return int(raw)
+        except ValueError:
+            print("Enter an integer.")
+
+
+def _prompt_bool(prompt: str, default: bool = False) -> bool:
+    suffix = "[Y/n]" if default else "[y/N]"
+    while True:
+        raw = input(f"{prompt} {suffix} ").strip().lower()
+        if not raw:
+            return default
+        if raw in ("y", "yes"):
+            return True
+        if raw in ("n", "no"):
+            return False
+        print("Enter y or n.")
+
+
+def capture_room_interactive() -> RoomMetrics:
+    print("=== Room metrics ===")
+    width = _prompt_float("Width (m)?", 3.6)
+    depth = _prompt_float("Depth (m)?", 4.0)
+    height = _prompt_float("Ceiling height (m)?", 2.4)
+    windows = _prompt_int("Number of windows?", 1)
+    doors = _prompt_int("Number of doors?", 1)
+    gas_line = _prompt_bool("Gas line available?", False)
+    water_points = _prompt_int("Water points (sinks etc.)?", 1)
+    notes = input("Freeform notes for AI (optional): ")
+    return RoomMetrics(
+        width_m=width,
+        depth_m=depth,
+        height_m=height,
+        windows=windows,
+        doors=doors,
+        gas_line=gas_line,
+        water_points=water_points,
+        notes=notes,
+    )
+
+
+def capture_appliances_interactive() -> List[ApplianceSpec]:
+    print("=== Appliances ===")
+    items: List[ApplianceSpec] = []
+    while True:
+        name = input("Appliance name (blank to finish): ").strip()
+        if not name:
+            break
+        w = _prompt_int("Width (cm)?", 60)
+        d = _prompt_int("Depth (cm)?", 60)
+        h = _prompt_int("Height (cm)?", 200 if "fridge" in name.lower() else 90)
