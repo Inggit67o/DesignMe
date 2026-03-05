@@ -1006,3 +1006,75 @@ def run_gas_estimate_demo() -> None:
     """Print gas estimates for common KetaVision operations."""
     print("KetaVision gas estimates (approximate):")
     for name, gas in get_gas_estimates().items():
+        print(f"  {name}: {gas}")
+
+
+# ---------------------------------------------------------------------------
+# KEYBOARD / CLI FLAGS
+# ---------------------------------------------------------------------------
+
+CLI_VERSION_FLAG = "--version"
+CLI_RUNBOOK_FLAG = "--runbook"
+CLI_DEMO_FLAG = "--demo"
+CLI_HELP_FLAG = "--help"
+CLI_LOAD_FLAG = "--load"
+CLI_SAVE_FLAG = "--save"
+CLI_REPORT_FLAG = "--report"
+CLI_CSV_IDEAS_FLAG = "--csv-ideas"
+CLI_CSV_APPLIANCES_FLAG = "--csv-appliances"
+CLI_VALIDATE_FLAG = "--validate"
+CLI_GAS_FLAG = "--gas"
+CLI_ERRORS_FLAG = "--errors"
+
+
+def handle_cli_load(path: str) -> DesignSession:
+    """Load session from file and return it."""
+    return load_session_from_file(path)
+
+
+def handle_cli_save(session: DesignSession, path: str) -> None:
+    """Save session to file."""
+    save_session_to_file(session, path)
+
+
+def handle_cli_report(session: DesignSession) -> None:
+    """Print full session report."""
+    print(build_session_report(session))
+
+
+# ---------------------------------------------------------------------------
+# STRING / DISPLAY HELPERS
+# ---------------------------------------------------------------------------
+
+
+def format_idea_one_line(idea: LayoutIdea) -> str:
+    """Single line for one layout idea."""
+    avg = (idea.ergonomics_score + idea.storage_score + idea.vibe_score) / 3.0
+    return f"{idea.style_label} tier={idea.risk_tier} avg={avg:.1f} {idea.plan_id_hint}"
+
+
+def format_room_one_line(room: RoomMetrics) -> str:
+    """Single line for room."""
+    return f"{room.width_m}x{room.depth_m}x{room.height_m}m w={room.windows} d={room.doors}"
+
+
+def format_appliance_one_line(a: ApplianceSpec) -> str:
+    """Single line for one appliance."""
+    return f"{a.name} {a.width_cm}x{a.depth_cm}x{a.height_cm}cm {a.power_kw}kW"
+
+
+def ideas_to_markdown(ideas: List[LayoutIdea]) -> str:
+    """Convert ideas to a simple markdown list."""
+    lines = ["## Layout ideas", ""]
+    for i, idea in enumerate(ideas, 1):
+        lines.append(f"{i}. **{idea.style_label}** (tier {idea.risk_tier})")
+        lines.append(f"   - Ergonomics: {idea.ergonomics_score:.1f}, Storage: {idea.storage_score:.1f}, Vibe: {idea.vibe_score:.1f}")
+        lines.append(f"   - {idea.narrative or idea.plan_id_hint}")
+        lines.append("")
+    return "\n".join(lines)
+
+
+def session_to_markdown(session: DesignSession) -> str:
+    """Convert full session to markdown."""
+    parts = [
+        "# DesignMe Session",
