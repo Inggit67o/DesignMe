@@ -718,3 +718,75 @@ def generate_ideas_batch(
     """Generate multiple layout ideas; optionally fix style set."""
     ideas: List[LayoutIdea] = []
     styles = style_labels or DEFAULT_STYLE_LABELS
+    for i in range(min(count, MAX_IDEAS_PER_SESSION)):
+        style = styles[i % len(styles)] if styles else None
+        ideas.append(LayoutHeuristics.synthesize_idea(room, appliances, constraints, style_label=style))
+    return ideas
+
+
+def build_session_from_dicts(
+    room_dict: Dict[str, Any],
+    appliances_list: List[Dict[str, Any]],
+    constraints_dict: Dict[str, Any],
+    num_ideas: int = 3,
+) -> DesignSession:
+    """Build a session from raw dicts (e.g. from API or web form)."""
+    room = RoomMetrics(
+        width_m=float(room_dict.get("width_m", 0)),
+        depth_m=float(room_dict.get("depth_m", 0)),
+        height_m=float(room_dict.get("height_m", 0)),
+        windows=int(room_dict.get("windows", 0)),
+        doors=int(room_dict.get("doors", 0)),
+        gas_line=bool(room_dict.get("gas_line", False)),
+        water_points=int(room_dict.get("water_points", 0)),
+        notes=str(room_dict.get("notes", "")),
+    )
+    appliances: List[ApplianceSpec] = []
+    for a in appliances_list:
+        appliances.append(
+            ApplianceSpec(
+                name=str(a.get("name", "")),
+                width_cm=int(a.get("width_cm", 60)),
+                depth_cm=int(a.get("depth_cm", 60)),
+                height_cm=int(a.get("height_cm", 90)),
+                must_keep=bool(a.get("must_keep", True)),
+                power_kw=float(a.get("power_kw", 2.0)),
+            )
+        )
+    constraints = ConstraintSet(
+        budget_fiat=float(constraints_dict.get("budget_fiat", 50000)),
+        timeline_weeks=int(constraints_dict.get("timeline_weeks", 8)),
+        prefer_gas=bool(constraints_dict.get("prefer_gas", False)),
+        prefer_induction=bool(constraints_dict.get("prefer_induction", True)),
+        noise_sensitive=bool(constraints_dict.get("noise_sensitive", False)),
+        child_friendly=bool(constraints_dict.get("child_friendly", True)),
+        wheelchair_accessible=bool(constraints_dict.get("wheelchair_accessible", False)),
+        notes=str(constraints_dict.get("notes", "")),
+    )
+    session = DesignSession(room=room, appliances=appliances, constraints=constraints)
+    session.ideas = generate_ideas_batch(room, appliances, constraints, count=num_ideas)
+    return session
+
+
+# ---------------------------------------------------------------------------
+# DEMO / QUICK START
+# ---------------------------------------------------------------------------
+
+
+def create_demo_room() -> RoomMetrics:
+    """Return a demo room for testing."""
+    return RoomMetrics(
+        width_m=3.6,
+        depth_m=4.0,
+        height_m=2.4,
+        windows=1,
+        doors=1,
+        gas_line=False,
+        water_points=1,
+        notes="Demo room",
+    )
+
+
+def create_demo_appliances() -> List[ApplianceSpec]:
+    """Return demo appliances list."""
+    return [
