@@ -1150,3 +1150,73 @@ def get_best_idea_by_storage(session: DesignSession) -> Optional[LayoutIdea]:
 
 
 def get_best_idea_by_vibe(session: DesignSession) -> Optional[LayoutIdea]:
+    """Return the layout idea with highest vibe score, or None if no ideas."""
+    if not session.ideas:
+        return None
+    return max(session.ideas, key=lambda i: i.vibe_score)
+
+
+def get_best_idea_by_average(session: DesignSession) -> Optional[LayoutIdea]:
+    """Return the layout idea with highest average of ergo/storage/vibe, or None."""
+    if not session.ideas:
+        return None
+    return max(
+        session.ideas,
+        key=lambda i: (i.ergonomics_score + i.storage_score + i.vibe_score) / 3.0,
+    )
+
+
+def session_idea_count(session: DesignSession) -> int:
+    """Return number of layout ideas in session."""
+    return len(session.ideas) if session.ideas else 0
+
+
+def session_appliance_count(session: DesignSession) -> int:
+    """Return number of appliances in session."""
+    return len(session.appliances)
+
+
+def session_room_area_m2(session: DesignSession) -> float:
+    """Return room area in m²."""
+    r = session.room
+    return r.width_m * r.depth_m
+
+
+def session_style_labels() -> List[str]:
+    """Return copy of default style labels for display."""
+    return list(DEFAULT_STYLE_LABELS)
+
+
+def session_risk_tier_labels() -> List[str]:
+    """Return copy of risk tier labels for display."""
+    return list(RISK_TIER_LABELS)
+
+
+# ---------------------------------------------------------------------------
+# MAIN ENHANCED (with --runbook, --demo, --help)
+# ---------------------------------------------------------------------------
+
+if __name__ == "__main__":
+    argv = sys.argv[1:]
+    if "--help" in argv or "-h" in argv:
+        print_usage()
+        raise SystemExit(0)
+    if "--version" in argv or "-v" in argv:
+        print(f"{APP_NAME} {APP_VERSION}")
+        raise SystemExit(0)
+    if "--runbook" in argv:
+        print_runbook()
+        raise SystemExit(0)
+    if "--demo" in argv:
+        run_demo()
+        raise SystemExit(0)
+    if "--gas" in argv:
+        run_gas_estimate_demo()
+        raise SystemExit(0)
+    if "--errors" in argv:
+        print_error_codes()
+        raise SystemExit(0)
+    if "--validate" in argv:
+        run_validation_demo()
+        raise SystemExit(0)
+    raise SystemExit(main(argv))
