@@ -502,3 +502,75 @@ def build_constraints_report(c: ConstraintSet) -> str:
     """Single-line summary of constraints."""
     return (
         f"Budget={c.budget_fiat:.0f}, timeline={c.timeline_weeks}w, "
+        f"gas={c.prefer_gas}, induction={c.prefer_induction}, "
+        f"noise_sensitive={c.noise_sensitive}, child_friendly={c.child_friendly}, "
+        f"accessible={c.wheelchair_accessible}"
+    )
+
+
+def build_ideas_report(ideas: List[LayoutIdea]) -> List[str]:
+    """List of short summaries for each layout idea."""
+    lines: List[str] = []
+    for i, idea in enumerate(ideas, 1):
+        avg = (idea.ergonomics_score + idea.storage_score + idea.vibe_score) / 3.0
+        lines.append(
+            f"  [{i}] {idea.style_label} tier={RISK_TIER_LABELS[idea.risk_tier]} "
+            f"ergo={idea.ergonomics_score:.1f} storage={idea.storage_score:.1f} "
+            f"vibe={idea.vibe_score:.1f} avg={avg:.1f} hint={idea.plan_id_hint}"
+        )
+    return lines
+
+
+def build_session_report(session: DesignSession) -> str:
+    """Full text report for a design session."""
+    parts = [
+        "=== DesignMe Session Report ===",
+        build_room_report(session.room),
+        build_constraints_report(session.constraints),
+        f"Appliances: {len(session.appliances)}",
+    ]
+    for a in session.appliances:
+        parts.append(f"  - {a.name} {a.width_cm}x{a.depth_cm}x{a.height_cm}cm power={a.power_kw}kW")
+    parts.append("Layout ideas:")
+    parts.extend(build_ideas_report(session.ideas))
+    return "\n".join(parts)
+
+
+# ---------------------------------------------------------------------------
+# CONFIG / CONSTANTS REFERENCE
+# ---------------------------------------------------------------------------
+
+DEFAULT_MIN_WIDTH_M = 1.5
+DEFAULT_MAX_WIDTH_M = 15.0
+DEFAULT_MIN_DEPTH_M = 1.5
+DEFAULT_MAX_DEPTH_M = 15.0
+DEFAULT_MIN_HEIGHT_M = 2.0
+DEFAULT_MAX_HEIGHT_M = 5.0
+DEFAULT_MIN_BUDGET = 0.0
+DEFAULT_MAX_BUDGET = 5_000_000.0
+DEFAULT_MIN_TIMELINE_WEEKS = 1
+DEFAULT_MAX_TIMELINE_WEEKS = 104
+MAX_APPLIANCES_PER_SESSION = 64
+MAX_IDEAS_PER_SESSION = 20
+KV_MAX_STYLE_INDEX = 15
+KV_MAX_TIER_INDEX = 6
+KV_SCORE_MIN = 1
+KV_SCORE_MAX = 10
+
+
+def get_style_label(index: int) -> str:
+    """Map style index to label; out of range returns 'unknown'."""
+    if 0 <= index < len(DEFAULT_STYLE_LABELS):
+        return DEFAULT_STYLE_LABELS[index]
+    return "unknown"
+
+
+def get_tier_label(index: int) -> str:
+    """Map risk tier index to label; out of range returns 'unknown'."""
+    if 0 <= index < len(RISK_TIER_LABELS):
+        return RISK_TIER_LABELS[index]
+    return "unknown"
+
+
+# ---------------------------------------------------------------------------
+# RUNBOOK / PROCEDURES
